@@ -1,3 +1,7 @@
+/**
+ *Submitted for verification at BscScan.com on 2021-03-30
+*/
+
 pragma solidity 0.6.12;
 
 // SPDX-License-Identifier: UNLICENSED
@@ -773,10 +777,6 @@ contract BEP20 is Context, IBEP20, Ownable {
 
         _balances[sender] = _balances[sender].sub(amount, 'BEP20: transfer amount exceeds balance');
         _balances[recipient] = _balances[recipient].add(amount);
-
-        //add delegates to the sender & recipient
-        _moveDelegates(_delegates[sender], _delegates[recipient], amount);
-        
         emit Transfer(sender, recipient, amount);
     }
 
