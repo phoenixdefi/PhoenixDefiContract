@@ -1,7 +1,3 @@
-/**
- *Submitted for verification at BscScan.com on 2021-03-31
-*/
-
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.6.12;
@@ -1141,7 +1137,7 @@ contract MasterChef is Ownable {
     }
 
     // The Pnixs TOKEN!
-    phoenixToken public phoenix;
+    phoenixToken public immutable phoenix;
     // Dev address.
     address public devaddr;
     // Pnixs tokens created per block.
@@ -1158,7 +1154,7 @@ contract MasterChef is Ownable {
     // Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
     // The block number when Pnixs mining starts.
-    uint256 public startBlock;
+    uint256 public immutable startBlock;
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
@@ -1181,10 +1177,20 @@ contract MasterChef is Ownable {
     function poolLength() external view returns (uint256) {
         return poolInfo.length;
     }
+    
+    mapping(IBEP20 IBEP20 =>  boolbool)  public poolExistence ;
+
+    modifier nonDuplicated(IBEP20 _lpToken)  {
+        require (poolExistence[_lpToken]  ==  false,  "nonDuplicated: duplicated"); 
+    }  
+
+    modifier validatePool(uint256 _pid)  {  
+        require (_pid < poolInfo.length ,  "Pool does not exist");
+    }
 
     // Add a new lp to the pool. Can only be called by the owner.
-    // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
-    function add(uint256 _allocPoint, IBEP20 _lpToken, uint16 _depositFeeBP, bool _withUpdate) public onlyOwner {
+    // DO NOT add the same LP token more than once. Rewards will be messed up if you do.
+    function add(uint256 _allocPoint, IBEP20 _lpToken, uint16 _depositFeeBP, bool _withUpdate) public onlyOwner nonDuplicated(_lpToken){
         require(_depositFeeBP <= 10000, "add: invalid deposit fee basis points");
         if (_withUpdate) {
             massUpdatePools();
@@ -1201,7 +1207,7 @@ contract MasterChef is Ownable {
     }
 
     // Update the given pool's Pnixs allocation point and deposit fee. Can only be called by the owner.
-    function set(uint256 _pid, uint256 _allocPoint, uint16 _depositFeeBP, bool _withUpdate) public onlyOwner {
+    function set(uint256 _pid, uint256 _allocPoint, uint16 _depositFeeBP, bool _withUpdate) public onlyOwner validatePool(_pid) {
         require(_depositFeeBP <= 10000, "set: invalid deposit fee basis points");
         if (_withUpdate) {
             massUpdatePools();
@@ -1213,7 +1219,7 @@ contract MasterChef is Ownable {
 
     // Return reward multiplier over the given _from to _to block.
     function getMultiplier(uint256 _from, uint256 _to) public pure returns (uint256) {
-        return _to.sub(_from).mul(BONUS_MULTIPLIER);
+        return _to.sub(_from);
     }
 
     // View function to see pending Pnixss on frontend.
@@ -1239,7 +1245,7 @@ contract MasterChef is Ownable {
     }
 
     // Update reward variables of the given pool to be up-to-date.
-    function updatePool(uint256 _pid) public {
+    function updatePool(uint256 _pid) public validatePool(_pid){
         PoolInfo storage pool = poolInfo[_pid];
         if (block.number <= pool.lastRewardBlock) {
             return;
@@ -1258,7 +1264,7 @@ contract MasterChef is Ownable {
     }
 
     // Deposit LP tokens to MasterChef for Pnixs allocation.
-    function deposit(uint256 _pid, uint256 _amount) public {
+    function deposit(uint256 _pid, uint256 _amount) public validatePool(_pid){
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
@@ -1283,7 +1289,7 @@ contract MasterChef is Ownable {
     }
 
     // Withdraw LP tokens from MasterChef.
-    function withdraw(uint256 _pid, uint256 _amount) public {
+    function withdraw(uint256 _pid, uint256 _amount) public validatePool(_pid){
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
@@ -1301,7 +1307,7 @@ contract MasterChef is Ownable {
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
-    function emergencyWithdraw(uint256 _pid) public {
+    function emergencyWithdraw(uint256 _pid) public validatePool(_pid){
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         uint256 amount = user.amount;
@@ -1314,15 +1320,18 @@ contract MasterChef is Ownable {
     // Safe phoenix transfer function, just in case if rounding error causes pool to not have enough Pnixss.
     function safePnixsTransfer(address _to, uint256 _amount) internal {
         uint256 phoenixBal = phoenix.balanceOf(address(this));
+        bool transferSuccess = false;  
         if (_amount > phoenixBal) {
-            phoenix.transfer(_to, phoenixBal);
+           transferSuccess = phoenix.transfer(_to, phoenixBal);
         } else {
-            phoenix.transfer(_to, _amount);
+            transferSuccess = phoenix.transfer(_to, _amount);
         }
+         require(transferSuccess, "safePnixsTransfer: transfer failed");
     }
 
     // Update dev address by the previous dev.
     function dev(address _devaddr) public {
+        require(_devaddr != address(0), "_devaddr's address must not be address(0)"); 
         require(msg.sender == devaddr, "dev: wut?");
         devaddr = _devaddr;
     }
@@ -1332,6 +1341,7 @@ contract MasterChef is Ownable {
     }
 
     function setFeeAddress(address _feeAddress) public{
+        require(_feeAddress !=  address(0), "feeAddress's address must not be address(0)");
         require(msg.sender == feeAddress, "setFeeAddress: FORBIDDEN");
         feeAddress = _feeAddress;
     }
